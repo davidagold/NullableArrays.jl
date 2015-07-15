@@ -54,7 +54,7 @@ julia> NullableArray(Char, 3, 3)
  Nullable{Char}()  Nullable{Char}()  Nullable{Char}()
  ```
  
- One can also construct a `NullableArray` from a heterogeneous `Array` that uses a token object `x` to represent a missing value. For instance, if string `"NA"` represents a missing value in `[1, "NA", 2, 3, 5, "NA"]`, we can translate this pattern into a `NullableArray` object by passing to `NullableArray()` the latter `Array` object, the desired element type of the resultant `NullableArray` and the object that represents missingness in the first argument:
+ One can also construct a `NullableArray` from a heterogeneous `Array` that uses a token object `x` to represent a missing value. Suppose for instance that the string `"NA"` represents a missing value in `[1, "NA", 2, 3, 5, "NA"]`. One can translate this pattern into a `NullableArray` object by passing to the `NullableArray` constructor the `Array` object at hand, the desired element type of the resultant `NullableArray` and the object that represents missingness in the `Array` argument:
  ```julia
  julia> NullableArray([1, "NA", 2, 3, 5, "NA"], Int, "NA")
 6-element NullableArrays.NullableArray{Int64,1}:
@@ -66,8 +66,46 @@ julia> NullableArray(Char, 3, 3)
  Nullable{Int64}()
  ```
 
+Indexing
+========
+Indexing into a `NullableArray{T}` is just like indexing into a regular `Array{T}`, except that the returned object will always be of type `Nullable{T}` rather than type `T`. One can expect any indexing pattern that works on an `Array` to work on a `NullableArray`. This includes using a `NullableArray` to index into any container object that sufficiently implements the `AbstractArray` interface:
+```julia
+julia> A = [1:5...]
+5-element Array{Int64,1}:
+ 1
+ 2
+ 3
+ 4
+ 5
 
-Implementation Details
+julia> X = NullableArray([2, 3])
+2-element NullableArrays.NullableArray{Int64,1}:
+ Nullable(2)
+ Nullable(3)
+
+julia> A[X]
+2-element Array{Int64,1}:
+ 2
+ 3
+ ```
+ Note, however, that attempting to index into any such `AbstractArray` with a null value will incur an error:
+```julia
+julia> Y = NullableArray([2, 3], [true, false])
+2-element NullableArrays.NullableArray{Int64,1}:
+ Nullable{Int64}()
+ Nullable(3)      
+
+julia> A[Y]
+ERROR: NullException()
+ in _checkbounds at /Users/David/.julia/v0.4/NullableArrays/src/indexing.jl:73
+ in getindex at abstractarray.jl:424
+ ```
+
+Working with `Nullable`s
+========================
+Using objects of type `Nullable{T}` to represent both present and missing values of type `T` may present an unfamiliar experience to users who have never encountered such specialized container types. This section of the documentation is devoted to explaining the dynamics of working with and illustrating common use patterns involving `Nullable` objects.
+
+`NullableArray` Implementation Details
 ======================
 Under the hood of each `NullableArray{T, N}` object are two fields: a `values::Array{T, N}` field and an `isnull:Array{Bool, N}` field:
 ```julia
