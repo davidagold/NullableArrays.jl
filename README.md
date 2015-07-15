@@ -105,6 +105,66 @@ Working with `Nullable`s
 ========================
 Using objects of type `Nullable{T}` to represent both present and missing values of type `T` may present an unfamiliar experience to users who have never encountered such specialized container types. This section of the documentation is devoted to explaining the dynamics of working with and illustrating common use patterns involving `Nullable` objects.
 
+A central concern is how to extend methods originally defined for non-`Nullable` arguments to take `Nullable` arguments.
+
+Suppose for instance that I have a method
+```julia
+f(x::Float64, y::Float64) = exp(x * y)
+```
+
+that I wish to `broadcast` over the two columns of `X::NullableArray{Float64, 2}`:
+```julia
+julia> X
+10x2 NullableArrays.NullableArray{Float64,2}:
+ Nullable(0.5503097221926698)   Nullable{Float64}()          
+ Nullable{Float64}()            Nullable{Float64}()          
+ Nullable(0.7806818430935034)   Nullable(0.4966357239169863) 
+ Nullable{Float64}()            Nullable(0.8819582596721911) 
+ Nullable(0.04244733980209592)  Nullable(0.8634601571530616) 
+ Nullable{Float64}()            Nullable(0.44256797964251904)
+ Nullable(0.3722788311682259)   Nullable(0.26740280850120346)
+ Nullable(0.4591974149414313)   Nullable{Float64}()          
+ Nullable{Float64}()            Nullable{Float64}()          
+ Nullable(0.2485293010638474)   Nullable(0.6661164389956584) 
+```
+As one may expect, simply calling `broadcast(f, X[:,1], X[:,2])` incurs a `MethodError`:
+```julia
+julia> broadcast(f, X[:,1], X[:,2])
+ERROR: MethodError: `f` has no method matching g(::Nullable{Float64}, ::Nullable{Float64})
+ in _F_ at broadcast.jl:80
+ in broadcast! at broadcast.jl:229
+ in broadcast at broadcast.jl:236
+```
+Let `v, w` be two `Nullable{Float64}` objects. If both `v, w` are non-null, the convention is to have `f(v, w)` return a similarly non-null `Nullable{Float64}` object whose `value` field agrees with `f(v.value, w.value)`.  If either of `v, w` is null, the convention is to return an empty `Nullable{Float64}` object, i.e. to propogate the uncertainty introduced by the null argument. Providing a systematic means of extending `f` to `Nullable` arguments in such a way that satisfies the above behavior is sometimes called *lifting* `f` over `Nullable` arguments. 
+ 
+Arguably, the best way to lift existing methods over `Nullable` arguments is to use multiple dispatch. That is, one can very easily extend `f` to handle `Nullable{Float64}` arguments by simply defining an appropriate method:
+```julia
+function f(x::Nullable{Float64}, y::Nullable{Float64})
+    if x.isnull | y.isnull
+        return Nullable{Float64}()
+    else
+        return Nullable(f(x.value, y.value))
+    end
+end
+```
+Now `broadcast` works as one would expect:
+```julia
+julia> broadcast(f, X[:,1], X[:,2])
+10-element Array{Nullable{Float64},1}:
+ Nullable{Float64}()         
+ Nullable{Float64}()         
+ Nullable(1.4736089974970423)
+ Nullable{Float64}()         
+ Nullable(1.037331537760899) 
+ Nullable{Float64}()         
+ Nullable(1.1046719410910564)
+ Nullable{Float64}()         
+ Nullable{Float64}()         
+ Nullable(1.1800413178724836)
+```
+
+The convention is not to support signatures of mixed `Nullable` and non `Nullable` arguments for solely the purposes of lifting. This reflects both conceptual concerns as well practical limitations -- in particular, to cover all possible combinations of `Nullable` and non-`Nullable` arguments for a signature of length N would require 2^N method definitions. If one finds that one is calling a function `f` on both `Nullable` and non-`Nullable` arguments, it is typically best to wrap the non-`Nullable` arguments into `Nullable` arguments and invoke the lifted version. Alternatively, one can instead pass their respective `value` fields to `f` -- **however** this approach is both less safe and less general and should only be used if one is certain that the `Nullable` arguments are non-null.
+
 `NullableArray` Implementation Details
 ======================
 Under the hood of each `NullableArray{T, N}` object are two fields: a `values::Array{T, N}` field and an `isnull:Array{Bool, N}` field:
