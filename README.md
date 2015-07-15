@@ -163,7 +163,7 @@ julia> broadcast(f, X[:,1], X[:,2])
  Nullable(1.1800413178724836)
 ```
 
-The convention is not to support signatures of mixed `Nullable` and non `Nullable` arguments for solely the purposes of lifting. This reflects both conceptual concerns as well practical limitations -- in particular, to cover all possible combinations of `Nullable` and non-`Nullable` arguments for a signature of length N would require 2^N method definitions. If one finds that one is calling a function `f` on both `Nullable` and non-`Nullable` arguments, it is typically best to wrap the non-`Nullable` arguments into `Nullable` arguments and invoke the lifted version. Alternatively, one can instead pass their respective `value` fields to `f` -- **however** this approach is both less safe and less general and should only be used if one is certain that the `Nullable` arguments are non-null.
+The convention is not to support signatures of mixed `Nullable` and non `Nullable` arguments for solely the purposes of lifting. This reflects both conceptual concerns as well practical limitations -- in particular, to cover all possible combinations of `Nullable` and non-`Nullable` arguments for a signature of length N would require 2^N method definitions. If one finds that one is calling a function `f` on both `Nullable` and non-`Nullable` arguments, it is typically best to wrap the non-`Nullable` arguments into `Nullable` arguments and invoke the lifted version. Alternatively, one can instead pass their respective `value` fields to `f` -- **HOWEVER**, this approach is both less safe and less general and should only be used if one is certain that the `Nullable` arguments are non-null.
 
 `NullableArray` Implementation Details
 ======================
