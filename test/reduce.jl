@@ -69,6 +69,8 @@ module TestReduce
         for op in (
             &,
             |,
+            Base.AndFun(),
+            Base.OrFun(),
         )
             @test isequal(reduce(op, U),
                           Nullable(reduce(op, H)))
